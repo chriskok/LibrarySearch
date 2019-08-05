@@ -74,7 +74,6 @@ def main():
     img_list = []
     for filename in os.listdir(db_directory):
         img_temp = cv.imread(db_directory + '/' + filename, cv.IMREAD_GRAYSCALE)
-        print(filename)
         kp_temp, desc_temp = detector.detectAndCompute(img_temp, None)
         img_list.append(img_temp)
         kp_list.append(kp_temp)
