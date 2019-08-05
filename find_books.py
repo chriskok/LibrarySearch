@@ -1,14 +1,17 @@
 #!/usr/bin/env python
-'''
-Feature-based image matching accross a database.
 
-Note, that you will need the https://github.com/opencv/opencv_contrib repo for SURF
+'''
+Feature-based image matching sample.
+
+Note, that you will need the https://github.com/opencv/opencv_contrib repo for SIFT and SURF
 
 USAGE
-  find_books.py [--cam=<0|1>]
+  find_books.py [--feature=<sift|surf|orb|akaze|brisk>[-flann]] [ <image1> ]
 
-  --cam - camera index to use if you have multiple webcams available
+  --feature  - Feature to use. Can be sift, surf, orb or brisk. Append '-flann'
+               to feature name to use Flann-based matcher instead bruteforce.
 
+  Press left mouse button on a feature point to see its matching point.
 '''
 
 # Python 2/3 compatibility
@@ -17,7 +20,6 @@ from __future__ import print_function
 import numpy as np
 import cv2 as cv
 from PIL import Image
-import os
 
 from common import anorm, getsize
 
@@ -56,6 +58,7 @@ def init_feature(name):
     else:
         matcher = cv.BFMatcher(norm)
     return detector, matcher
+
 
 def filter_matches(kp1, kp2, matches, ratio = 0.75):
     mkp1, mkp2 = [], []
@@ -138,26 +141,29 @@ def explore_match(win, img1, img2, kp_pairs, status = None, H = None):
 
 def main():
     import sys, getopt
-    opts, args = getopt.getopt(sys.argv[1:], '', ['cam='])
+    opts, args = getopt.getopt(sys.argv[1:], '', ['feature='])
     opts = dict(opts)
-    cam_number = opts.get('--cam', 0)
+    feature_name = opts.get('--feature', 'brisk')
+    print(args)
+    try:
+        fn1 = args[0]
+    except:
+        fn1 = 'test_imgs/7.jpg'
 
     # initialize the camera
-    cap = cv.VideoCapture(int(cam_number))   # 0 -> index of camera
+    cap = cv.VideoCapture(1)   # 0 -> index of camera
 
-    detector, matcher = init_feature('surf')
+    detector, matcher = init_feature(feature_name)
 
-    kp_list = []
-    desc_list = []
-    img_list = []
-    for filename in os.listdir('test_imgs'):
-        img_temp = cv.imread('test_imgs/' + filename, cv.IMREAD_GRAYSCALE)
-        kp_temp, desc_temp = detector.detectAndCompute(img_temp, None)
-        img_list.append(img_temp)
-        kp_list.append(kp_temp)
-        desc_list.append(desc_temp)
+    print('using', feature_name)
 
-    # print(str(len(kp_list)) + ", " + str(len(desc_list)))
+    print(fn1)
+    img1 = cv.imread(fn1, cv.IMREAD_GRAYSCALE)
+    kp1, desc1 = detector.detectAndCompute(img1, None)
+
+    if img1 is None:
+        print('Failed to load fn1:', fn1)
+        sys.exit(1)
 
     if detector is None:
         print('unknown feature:', feature_name)
@@ -180,49 +186,26 @@ def main():
 
         kp2, desc2 = detector.detectAndCompute(img2, None)
 
-        best_match = []
-        best_match_percentage = 0
-        best_match_index = 0
-        matches_index = 0
-        for i in range(len(desc_list)):
 
-            matches = flann.knnMatch(desc_list[i],desc2,k=2)
+        matches = flann.knnMatch(desc1,desc2,k=2)
 
-            good_points = []
-            for m, n in matches:
-                if m.distance < 0.6*n.distance:
-                    good_points.append(m)
-            number_keypoints = 0
-            if len(kp_list[i]) >= len(kp2):
-                number_keypoints = len(kp_list[i])
-            else:
-                number_keypoints = len(kp2)
-            # print("keypoints: " + str(number_keypoints) + ", good_points: " + str(len(good_points)))
-            percentage_similarity = float(len(good_points)) / number_keypoints * 100
-            # print("Similarity: " + str(percentage_similarity) + "\n")
-
-            if (percentage_similarity > best_match_percentage):
-                best_match = good_points
-                best_match_index = matches_index
-                best_match_percentage = percentage_similarity
-
-            matches_index += 1
-
-        # print("BEST MATCH INDEX: ", best_match_index)
-
-
+        # store all the good matches as per Lowe's ratio test.
+        good_matches = []
+        for m,n in matches:
+            if m.distance < 0.7*n.distance:
+                good_matches.append(m)
 
         MIN_MATCH_COUNT = 10
 
-        if len(best_match)>MIN_MATCH_COUNT:
-            kp1 = kp_list[best_match_index]
-            src_pts = np.float32([ kp1[m.queryIdx].pt for m in best_match ]).reshape(-1,1,2)
-            dst_pts = np.float32([ kp2[m.trainIdx].pt for m in best_match ]).reshape(-1,1,2)
+        if len(good_matches)>MIN_MATCH_COUNT:
+
+            src_pts = np.float32([ kp1[m.queryIdx].pt for m in good_matches ]).reshape(-1,1,2)
+            dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good_matches ]).reshape(-1,1,2)
 
             M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC,5.0)
             matchesMask = mask.ravel().tolist()
 
-            h,w = img_list[best_match_index].shape[:2]
+            h,w = img1.shape[:2]
             pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
             # pts = np.array([pts])
             if M is not None:
@@ -234,7 +217,7 @@ def main():
             else:
                 print("M was none")
         else:
-            print ("Not enough matches are found - %d/%d" % (len(best_match),MIN_MATCH_COUNT))
+            print ("Not enough matches are found - %d/%d" % (len(good_matches),MIN_MATCH_COUNT))
             matchesMask = None
 
         draw_params = dict(matchColor = (0,255,0), # draw matches in green color
@@ -242,7 +225,7 @@ def main():
                        matchesMask = matchesMask, # draw only inliers
                        flags = 2)
 
-        img3 = cv.drawMatches(img_list[best_match_index],kp_list[best_match_index],img2,kp2,best_match, None,**draw_params)
+        img3 = cv.drawMatches(img1,kp1,img2,kp2,good_matches, None,**draw_params)
 
         cv.imshow("result", img3)
 
