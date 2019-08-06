@@ -6,12 +6,11 @@ Feature-based image matching sample.
 Note, that you will need the https://github.com/opencv/opencv_contrib repo for SIFT and SURF
 
 USAGE
-  find_obj.py [--feature=<sift|surf|orb|akaze|brisk>[-flann]] [ <image1> <image2> ]
+  landscape_transform.py [--feature=<sift|surf|orb|akaze|brisk>[-flann]] [<image1> <image2>]
 
   --feature  - Feature to use. Can be sift, surf, orb or brisk. Append '-flann'
                to feature name to use Flann-based matcher instead bruteforce.
 
-  Press left mouse button on a feature point to see its matching point.
 '''
 
 # Python 2/3 compatibility
@@ -57,7 +56,6 @@ def init_feature(name):
     else:
         matcher = cv.BFMatcher(norm)
     return detector, matcher
-
 
 def filter_matches(kp1, kp2, matches, ratio = 0.75):
     mkp1, mkp2 = [], []
@@ -137,7 +135,6 @@ def explore_match(win, img1, img2, kp_pairs, status = None, H = None):
     cv.setMouseCallback(win, onmouse)
     return vis
 
-
 def main():
     import sys, getopt
     opts, args = getopt.getopt(sys.argv[1:], '', ['feature='])
@@ -146,12 +143,14 @@ def main():
     try:
         fn1, fn2 = args
     except:
-        fn1 = 'imgs/test1_clear.jpg'
-        fn2 = 'imgs/test1_affine.jpg'
+        fn1 = 'imgs/ref1.jpg'
+        fn2 = 'imgs/test1_clear.jpg'
 
     img1 = cv.imread(fn1, cv.IMREAD_GRAYSCALE)
     img2 = cv.imread(fn2, cv.IMREAD_GRAYSCALE)
-    features = ["sift", "surf", "orb", "akaze", "brisk"]
+
+    # features = ["sift", "surf", "orb", "akaze", "brisk"]
+    features = ["sift", "surf", "orb"]
     for f in features:
         # detector, matcher = init_feature(feature_name)
         detector, matcher = init_feature(f)
@@ -165,7 +164,7 @@ def main():
             sys.exit(1)
 
         if detector is None:
-            print('unknown feature:', feature_name)
+            print('unknown feature:', f)
             sys.exit(1)
 
         print('using', f)
@@ -177,7 +176,7 @@ def main():
         def match_and_draw(win):
             print('matching...')
             raw_matches = matcher.knnMatch(desc1, trainDescriptors = desc2, k = 2) #2
-            p1, p2, kp_pairs = filter_matches(kp1, kp2, raw_matches)
+            p1, p2, kp_pairs = filter_matches(kp1, kp2, raw_matches, 0.9)
             if len(p1) >= 4:
                 H, status = cv.findHomography(p1, p2, cv.RANSAC, 5.0)
                 print('%d / %d  inliers/matched' % (np.sum(status), len(status)))
@@ -187,8 +186,9 @@ def main():
 
             _vis = explore_match(win, img1, img2, kp_pairs, status, H)
 
-        match_and_draw('find_obj')
+        match_and_draw(f)
         cv.waitKey()
+        cv.destroyAllWindows()
 
     print('Done')
 
