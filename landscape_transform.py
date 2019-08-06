@@ -146,14 +146,13 @@ def main():
     try:
         fn1, fn2 = args
     except:
-        fn1 = 'box.png'
-        fn2 = 'box_in_scene.png'
+        fn1 = 'imgs/test1_clear.jpg'
+        fn2 = 'imgs/test1_affine.jpg'
 
     img1 = cv.imread(fn1, cv.IMREAD_GRAYSCALE)
     img2 = cv.imread(fn2, cv.IMREAD_GRAYSCALE)
     features = ["sift", "surf", "orb", "akaze", "brisk"]
     for f in features:
-        print(f)
         # detector, matcher = init_feature(feature_name)
         detector, matcher = init_feature(f)
 
@@ -169,7 +168,7 @@ def main():
             print('unknown feature:', feature_name)
             sys.exit(1)
 
-        print('using', feature_name)
+        print('using', f)
 
         kp1, desc1 = detector.detectAndCompute(img1, None)
         kp2, desc2 = detector.detectAndCompute(img2, None)
