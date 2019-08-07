@@ -79,10 +79,6 @@ def main():
         kp_list.append(kp_temp)
         desc_list.append(desc_temp)
 
-    if detector is None:
-        print('unknown feature:', feature_name)
-        sys.exit(1)
-
     FLANN_INDEX_KDTREE = 0
     index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
     search_params = dict(checks = 50)
