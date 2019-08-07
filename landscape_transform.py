@@ -151,6 +151,16 @@ def crop_img(dir_name, img_name, height_crop=30, width_crop=0):
     # cv.waitKey()
     cv.imwrite(cropped_dir_name + '/cropped-' + img_name, crop_img)
 
+def affine_transform(filename):
+    img = cv.imread(filename)
+    rows,cols,ch = img.shape
+    pts1 = np.float32([[50,50],[200,50],[50,200]])
+    pts2 = np.float32([[10,100],[200,50],[100,250]])
+    M = cv.getAffineTransform(pts1,pts2)
+    dst = cv.warpAffine(img,M,(cols,rows))
+
+    cv.imwrite(filename, dst)
+
 def compare_imgs(fn1, fn2, features):
     img1 = cv.imread(fn1, cv.IMREAD_GRAYSCALE)
     img2 = cv.imread(fn2, cv.IMREAD_GRAYSCALE)
@@ -208,7 +218,7 @@ def main():
 
     # features = ["sift", "surf", "orb", "akaze", "brisk"]
     # features = ["sift", "surf", "orb"]
-    features = ["surf"]
+    # features = ["surf"]
     # compare_imgs(fn1, fn2, features)
 
     # crop images
@@ -223,6 +233,10 @@ def main():
         prefix = db_directory + '_cropped/'
         db_img_1 = prefix + images[i]
         db_img_2 = prefix + images[i+1]
+
+        if(i > 8):
+            affine_transform(db_img_2)
+
         compare_imgs(db_img_1, db_img_2, features)
 
         # img_temp = cv.imread(db_directory + '/' + filename, cv.IMREAD_GRAYSCALE)
