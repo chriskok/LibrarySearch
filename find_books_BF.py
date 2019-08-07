@@ -62,7 +62,7 @@ def main():
     opts, args = getopt.getopt(sys.argv[1:], '', ['cam=', 'db='])
     opts = dict(opts)
     cam_number = opts.get('--cam', 0)
-    db_directory = opts.get('--db', 'test_imgs')
+    db_directory = opts.get('--db', 'book_db')
 
     # initialize the camera
     cap = cv.VideoCapture(int(cam_number))

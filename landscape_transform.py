@@ -6,10 +6,7 @@ Feature-based image matching sample.
 Note, that you will need the https://github.com/opencv/opencv_contrib repo for SIFT and SURF
 
 USAGE
-  landscape_transform.py [--feature=<sift|surf|orb|akaze|brisk>[-flann]] [<image1> <image2>]
-
-  --feature  - Feature to use. Can be sift, surf, orb or brisk. Append '-flann'
-               to feature name to use Flann-based matcher instead bruteforce.
+  landscape_transform.py [--db=<path to image directory>] [<image1> <image2>]
 
 '''
 
@@ -18,6 +15,8 @@ from __future__ import print_function
 
 import numpy as np
 import cv2 as cv
+import os
+import sys, getopt
 
 from common import anorm, getsize
 
@@ -135,22 +134,27 @@ def explore_match(win, img1, img2, kp_pairs, status = None, H = None):
     cv.setMouseCallback(win, onmouse)
     return vis
 
-def main():
-    import sys, getopt
-    opts, args = getopt.getopt(sys.argv[1:], '', ['feature='])
-    opts = dict(opts)
-    feature_name = opts.get('--feature', 'brisk')
-    try:
-        fn1, fn2 = args
-    except:
-        fn1 = 'imgs/ref1.jpg'
-        fn2 = 'imgs/test1_clear.jpg'
+def crop_img(dir_name, img_name, height_crop=30, width_crop=0):
+    cropped_dir_name = dir_name + '_cropped'
+    if not os.path.exists(cropped_dir_name):
+        os.makedirs(cropped_dir_name)
 
+    img = cv.imread(dir_name + '/' + img_name)
+    y = img.shape[0]
+    x = img.shape[1]
+
+    h=height_crop
+    w=width_crop
+    crop_img = img[h:y-h, w:x-w]
+
+    # cv.imshow("cropped", crop_img)
+    # cv.waitKey()
+    cv.imwrite(cropped_dir_name + '/cropped-' + img_name, crop_img)
+
+def compare_imgs(fn1, fn2, features):
     img1 = cv.imread(fn1, cv.IMREAD_GRAYSCALE)
     img2 = cv.imread(fn2, cv.IMREAD_GRAYSCALE)
 
-    # features = ["sift", "surf", "orb", "akaze", "brisk"]
-    features = ["sift", "surf", "orb"]
     for f in features:
         # detector, matcher = init_feature(feature_name)
         detector, matcher = init_feature(f)
@@ -176,7 +180,7 @@ def main():
         def match_and_draw(win):
             print('matching...')
             raw_matches = matcher.knnMatch(desc1, trainDescriptors = desc2, k = 2) #2
-            p1, p2, kp_pairs = filter_matches(kp1, kp2, raw_matches, 0.9)
+            p1, p2, kp_pairs = filter_matches(kp1, kp2, raw_matches, 0.3)
             if len(p1) >= 4:
                 H, status = cv.findHomography(p1, p2, cv.RANSAC, 5.0)
                 print('%d / %d  inliers/matched' % (np.sum(status), len(status)))
@@ -191,6 +195,38 @@ def main():
         cv.destroyAllWindows()
 
     print('Done')
+
+def main():
+    opts, args = getopt.getopt(sys.argv[1:], '', ['db='])
+    opts = dict(opts)
+    db_directory = opts.get('--db', 'landscape_db')
+    try:
+        fn1, fn2 = args
+    except:
+        fn1 = 'imgs/ref1.jpg'
+        fn2 = 'imgs/test1.jpg'
+
+    # features = ["sift", "surf", "orb", "akaze", "brisk"]
+    # features = ["sift", "surf", "orb"]
+    features = ["surf"]
+    # compare_imgs(fn1, fn2, features)
+
+    # crop images
+    images = os.listdir(db_directory)
+    for filename in images:
+        # print(filename)
+        crop_img(db_directory, filename)
+
+    features = ["surf"]
+    images = os.listdir(db_directory + "_cropped")
+    for i in range(0, len(images) - 1):
+        prefix = db_directory + '_cropped/'
+        db_img_1 = prefix + images[i]
+        db_img_2 = prefix + images[i+1]
+        compare_imgs(db_img_1, db_img_2, features)
+
+        # img_temp = cv.imread(db_directory + '/' + filename, cv.IMREAD_GRAYSCALE)
+        # kp_temp, desc_temp = detector.detectAndCompute(img_temp, None)
 
 
 if __name__ == '__main__':
