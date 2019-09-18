@@ -10,6 +10,9 @@ Then run the command:
 python find_books_BF.py
 ```
 
+## Notes
+- Drew a lot of inspiration from the 3-level content based image retrieval (CBIR) system proposed here: https://towardsdatascience.com/judging-a-book-by-its-cover-1365d001ef50
+
 ## Scraping images
 
 Install:
