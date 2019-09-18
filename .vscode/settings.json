@@ -1,4 +1,10 @@
 {
     "python.pythonPath": "C:\\Python27\\python.exe",
-    "python.linting.pylintArgs": ["--extension-pkg-whitelist=cv2"],
+    // whitelist numpy to remove lint errors
+    "python.linting.pylintArgs": [
+        "--ignored-modules=numpy,cv2", "--ignored-classes=numpy,cv2", "--extension-pkg-whitelist=numpy,cv2"
+    ],
+    "python.linting.pylintEnabled": true,
+    "python.linting.flake8Enabled": false,
+    "python.linting.enabled": true,
 }
